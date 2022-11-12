@@ -13,7 +13,7 @@ const toggleParagraphHandler = useCallback(() => {
   if (allowToggle){
   setShowParagraph(prevShowParagraph => !prevShowParagraph)
 }
-}, [])
+}, [allowToggle])
 
 const allowToggleHandler = () => {
   setAllowToggle(true)
@@ -22,7 +22,7 @@ const allowToggleHandler = () => {
   return (
     <div className="app">
       <h1>Hi there!</h1>
-    <DemoOutput show={false}/>
+    <DemoOutput show={showParagraph}/>
       <Button onClick={allowToggleHandler}>allow toggle</Button>
       <Button onClick={toggleParagraphHandler}>Toggle paragraph</Button>
    
