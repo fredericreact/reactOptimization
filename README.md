@@ -1,70 +1,207 @@
-# Getting Started with Create React App
+# Child component rerendering
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Component where there is a reexecuted is where the component there is the state update
 
-## Available Scripts
+If a parent component is reexecuted, all its child component will be reexecuted as well.
 
-In the project directory, you can run:
+It can be bad for performance optimization
 
-### `npm start`
+# ReactMemo
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+To avoid that we can use React.memo : it will only rerender the component if its props changed
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
 
-### `npm test`
+```javascript
+import React from 'react'
+import MyParagraph from './MyParagraph'
+ 
+const DemoOutput = (props) => {
+    console.log('demo output running')
+return <MyParagraph>{props.show ? 'this is new' : ''}</MyParagraph>
+}
+ 
+export default React.memo(DemoOutput)
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-### `npm run build`
+Mais on le fait pas partout ce react,memo parce que ca a un cost aussi, le cost de props comparison au lieu du cost de rerender
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Donc ca a un interet si veux eviter toute une branche de components de rerender. 
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Si c’est un component qui doit etre rerender souvent, qui change souvent ca vaut pas le coup, si ce n’est pas le cas, il vaut mieux utiliser react.memo
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-### `npm run eject`
+```javascript
+import React, {useState} from 'react';
+import Button from './components/UI/Button/Button'
+import './App.css';
+import DemoOutput from './components/Demo/DemoOutput';
+ 
+function App() {
+  const [showParagraph, setShowParagraph] =useState(false);
+ 
+console.log('App running')
+ 
+const toggleParagraphHandler = () => {
+  setShowParagraph(prevShowParagraph => !prevShowParagraph)
+}
+ 
+  return (
+    <div className="app">
+      <h1>Hi there!</h1>
+    <DemoOutput show={false}/>
+      <Button onClick={toggleParagraphHandler}>Toggle paragraph</Button>
+    </div>
+  );
+}
+ 
+export default App;
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Sauf que ca marche pour les boolean comme pour le component demoOutput mais ca marche pas pour les fonctions ou arrays. 
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Parce que quand tu rerender App, une nouvelle fonction toggleParagraphHandler est recree, same for show={false}.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Mais la comparison est ok pour les boolean, pas pour les fonctions ou arrays, javascript va considerer que c’est different
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
 
-## Learn More
+# useCallback()
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+On peut resoudre ca grace au hook useCallback.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Ca va sauver ma fonction et dire a react de ne pas la recreer a chaque execution
 
-### Code Splitting
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```javascript
+import React, {useState, useCallback} from 'react';
+import Button from './components/UI/Button/Button'
+import './App.css';
+import DemoOutput from './components/Demo/DemoOutput';
+ 
+function App() {
+  const [showParagraph, setShowParagraph] =useState(false);
+ 
+console.log('App running')
+ 
+const toggleParagraphHandler = useCallback(() => {
+  setShowParagraph(prevShowParagraph => !prevShowParagraph)
+}, [])
+ 
+  return (
+    <div className="app">
+      <h1>Hi there!</h1>
+    <DemoOutput show={false}/>
+      <Button onClick={toggleParagraphHandler}>Toggle paragraph</Button>
+    </div>
+  );
+}
+ 
+export default App;
+```
 
-### Analyzing the Bundle Size
+Des fois on a quand meme besoin que la fonction soit reupdated si une valeur change , donc on va rajouter cette valeur en dependency dans le useCallback
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
 
-### Making a Progressive Web App
+```javascript
+import React, {useState, useCallback} from 'react';
+import Button from './components/UI/Button/Button'
+import './App.css';
+import DemoOutput from './components/Demo/DemoOutput';
+ 
+function App() {
+  const [showParagraph, setShowParagraph] =useState(false);
+  const [allowToggle, setAllowToggle] =useState(false);
+ 
+console.log('App running')
+ 
+const toggleParagraphHandler = useCallback(() => {
+  if (allowToggle){
+  setShowParagraph(prevShowParagraph => !prevShowParagraph)
+}
+}, [allowToggle])
+ 
+const allowToggleHandler = () => {
+  setAllowToggle(true)
+}
+ 
+  return (
+    <div className="app">
+      <h1>Hi there!</h1>
+    <DemoOutput show={showParagraph}/>
+      <Button onClick={allowToggleHandler}>allow toggle</Button>
+      <Button onClick={toggleParagraphHandler}>Toggle paragraph</Button>
+   
+    </div>
+  );
+}
+ 
+export default App;
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+# State
 
-### Advanced Configuration
+Le state en revanche n’est pas réinitialiser a chaque component rerender
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+UseMemo allows to memorize any type of data you want to store
 
-### Deployment
+Store sorting result
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
 
-### `npm run build` fails to minify
+```javascript
+import React, { useMemo } from 'react';
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+import classes from './DemoList.module.css';
+
+const DemoList = (props) => {
+  const { items } = props;
+
+  const sortedList = useMemo(() => {
+    console.log('Items sorted');
+    return items.sort((a, b) => a - b);
+  }, [items]); 
+  console.log('DemoList RUNNING');
+
+  return (
+    <div className={classes.list}>
+      <h2>{props.title}</h2>
+      <ul>
+        {sortedList.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default React.memo(DemoList);
+```
+
+Store array
+
+
+```javascript
+import React, { useState, useCallback, useMemo } from 'react';
+
+import './App.css';
+import DemoList from './components/Demo/DemoList';
+import Button from './components/UI/Button/Button';
+
+function App() {
+  const [listTitle, setListTitle] = useState('My List');
+
+  const changeTitleHandler = useCallback(() => {
+    setListTitle('New Title');
+  }, []);
+
+  const listItems = useMemo(() => [5, 3, 1, 10, 9], []);
+
+  return (
+    <div className="app">
+      <DemoList title={listTitle} items={listItems} />
+      <Button onClick={changeTitleHandler}>Change List Title</Button>
+    </div>
+  );
+}
+
+export default App;
+```
